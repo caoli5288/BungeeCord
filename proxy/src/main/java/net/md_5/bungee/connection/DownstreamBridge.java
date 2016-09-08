@@ -235,7 +235,7 @@ public class DownstreamBridge extends PacketHandler
             String serverBrand = DefinedPacket.readString( brand );
             brand.release();
 
-            Preconditions.checkState( !serverBrand.contains( bungee.getName() ), "Cannot connect proxy to itself!" );
+            // Preconditions.checkState( !serverBrand.contains( bungee.getName() ), "Cannot connect proxy to itself!" );
 
             brand = ByteBufAllocator.DEFAULT.heapBuffer();
             DefinedPacket.writeString( bungee.getName() + " (" + bungee.getVersion() + ")" + " <- " + serverBrand, brand );
