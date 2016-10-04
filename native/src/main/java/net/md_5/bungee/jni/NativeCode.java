@@ -1,12 +1,13 @@
 package net.md_5.bungee.jni;
 
 import com.google.common.io.ByteStreams;
+import net.md_5.bungee.jni.cipher.BungeeCipher;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import net.md_5.bungee.jni.cipher.BungeeCipher;
 
 public final class NativeCode<T>
 {
@@ -16,6 +17,7 @@ public final class NativeCode<T>
     private final Class<T> nativeImpl;
     //
     private boolean loaded;
+    private boolean enable;
 
     public NativeCode(String name, Class<T> javaImpl, Class<T> nativeImpl)
     {
@@ -28,7 +30,7 @@ public final class NativeCode<T>
     {
         try
         {
-            return ( loaded ) ? nativeImpl.newInstance() : javaImpl.newInstance();
+            return ( enable ) ? nativeImpl.newInstance() : javaImpl.newInstance();
         } catch ( IllegalAccessException | InstantiationException ex )
         {
             throw new RuntimeException( "Error getting instance", ex );
@@ -44,7 +46,7 @@ public final class NativeCode<T>
             try
             {
                 System.loadLibrary( fullName );
-                loaded = true;
+                enable = loaded = true;
             } catch ( Throwable t )
             {
             }
@@ -64,7 +66,7 @@ public final class NativeCode<T>
                     }
 
                     System.load( temp.getPath() );
-                    loaded = true;
+                    enable = loaded = true;
                 } catch ( IOException ex )
                 {
                     // Can't write to tmp?
@@ -76,6 +78,15 @@ public final class NativeCode<T>
         }
 
         return loaded;
+    }
+
+    public boolean setEnable(boolean enable) {
+        if (loaded) {// Ignore if native not loaded
+            boolean enable1 = this.enable;
+            this.enable = enable;
+            return enable1 ^ enable;
+        }
+        return false;
     }
 
     public static boolean isSupported()

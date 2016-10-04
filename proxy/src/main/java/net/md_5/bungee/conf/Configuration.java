@@ -2,6 +2,19 @@ package net.md_5.bungee.conf;
 
 import com.google.common.base.Preconditions;
 import gnu.trove.map.TMap;
+import lombok.Getter;
+import net.md_5.bungee.BungeeCord;
+import net.md_5.bungee.api.Favicon;
+import net.md_5.bungee.api.ProxyConfig;
+import net.md_5.bungee.api.ProxyServer;
+import net.md_5.bungee.api.config.ConfigurationAdapter;
+import net.md_5.bungee.api.config.ListenerInfo;
+import net.md_5.bungee.api.config.ServerInfo;
+import net.md_5.bungee.compress.CompressFactory;
+import net.md_5.bungee.util.CaseInsensitiveMap;
+import net.md_5.bungee.util.CaseInsensitiveSet;
+
+import javax.imageio.ImageIO;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
@@ -9,16 +22,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
-import javax.imageio.ImageIO;
-import lombok.Getter;
-import net.md_5.bungee.api.Favicon;
-import net.md_5.bungee.api.ProxyConfig;
-import net.md_5.bungee.api.ProxyServer;
-import net.md_5.bungee.api.config.ConfigurationAdapter;
-import net.md_5.bungee.api.config.ListenerInfo;
-import net.md_5.bungee.api.config.ServerInfo;
-import net.md_5.bungee.util.CaseInsensitiveMap;
-import net.md_5.bungee.util.CaseInsensitiveSet;
 
 /**
  * Core configuration for the proxy.
@@ -57,6 +60,7 @@ public class Configuration implements ProxyConfig
     private boolean ipForward;
     private Favicon favicon;
     private int compressionThreshold = 256;
+    private boolean noNativeCompress;
 
     public void load()
     {
@@ -74,12 +78,15 @@ public class Configuration implements ProxyConfig
                 ProxyServer.getInstance().getLogger().log( Level.WARNING, "Could not load server icon", ex );
             }
         }
+        if (CompressFactory.zlib.setEnable(!(noNativeCompress = adapter.getBoolean("i5mc.no-native-compress", false)))) {
+            BungeeCord.getInstance().getLogger().info("Set not use native compress to " + noNativeCompress + ".");
+        }
 
         listeners = adapter.getListeners();
         timeout = adapter.getInt( "timeout", timeout );
         uuid = adapter.getString( "stats", uuid );
         onlineMode = adapter.getBoolean( "online_mode", onlineMode );
-        logCommands = adapter.getBoolean( "log_commands", logCommands );
+        logCommands = adapter.getBoolean("log_commands", logCommands);
         playerLimit = adapter.getInt( "player_limit", playerLimit );
         throttle = adapter.getInt( "connection_throttle", throttle );
         ipForward = adapter.getBoolean( "ip_forward", ipForward );
