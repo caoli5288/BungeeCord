@@ -615,9 +615,11 @@ public class InitialHandler extends PacketHandler implements PendingConnection
     }
 
     @Override
-    public String toString()
-    {
-        return "[" + getName() + "] <-> InitialHandler";
+    public String toString() {
+        if (loginRequest == null) {
+            return "[" + getAddress() + "] <-> InitialHandler";
+        }
+        return "[" + loginRequest.getData() + "|" + getAddress() + "] <-> InitialHandler";
     }
 
     @Override
