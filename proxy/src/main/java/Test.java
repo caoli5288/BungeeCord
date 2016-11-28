@@ -1,8 +1,15 @@
 
+import java.io.PrintStream;
+import jline.console.ConsoleReader;
 import net.md_5.bungee.BungeeCord;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.command.ConsoleCommandSender;
+import net.md_5.bungee.log.BungeeConsoleAppender;
+import net.md_5.bungee.log.LoggingOutputStream;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.fusesource.jansi.AnsiConsole;
 
 /*
  * To change this template, choose Tools | Templates
@@ -17,7 +24,19 @@ public class Test
 
     public static void main(String[] args) throws Exception
     {
-        BungeeCord bungee = new BungeeCord();
+        System.setProperty( "java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager" );
+        System.setProperty( "Log4jContextSelector", "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector" );
+        System.setProperty( "library.jansi.version", "BungeeCord" );
+
+        AnsiConsole.systemInstall();
+        ConsoleReader consoleReader = new ConsoleReader();
+        consoleReader.setExpandEvents( false );
+        BungeeConsoleAppender.setConsoleReader( consoleReader );
+
+        System.setErr( new PrintStream( new LoggingOutputStream( LogManager.getLogger( "SYSERR" ), Level.ERROR ), true ) );
+        System.setOut( new PrintStream( new LoggingOutputStream( LogManager.getLogger( "SYSOUT" ), Level.INFO ), true ) );
+
+        BungeeCord bungee = new BungeeCord( consoleReader );
         ProxyServer.setInstance( bungee );
         bungee.getLogger().info( "Enabled BungeeCord version " + bungee.getVersion() );
         bungee.start();
