@@ -140,8 +140,7 @@ public class InitialHandler extends PacketHandler implements PendingConnection
     public void handle(LegacyHandshake legacyHandshake) throws Exception
     {
         this.legacy = true;
-        ch.getHandle().writeAndFlush( bungee.getTranslation( "outdated_client" ) );
-        ch.close();
+        ch.close( bungee.getTranslation( "outdated_client" ) );
     }
 
     @Override
@@ -424,7 +423,7 @@ public class InitialHandler extends PacketHandler implements PendingConnection
                         finish();
                         return;
                     }
-                    disconnect( "Not authenticated with Minecraft.net" );
+                    disconnect( bungee.getTranslation( "offline_mode_player" ) );
                 } else
                 {
                     disconnect( bungee.getTranslation( "mojang_fail" ) );
@@ -494,7 +493,7 @@ public class InitialHandler extends PacketHandler implements PendingConnection
                     @Override
                     public void run()
                     {
-                        if ( ch.getHandle().isActive() )
+                        if ( !ch.isClosing() )
                         {
                             UserConnection userCon = new UserConnection( bungee, ch, getName(), InitialHandler.this );
                             userCon.setCompressionThreshold( BungeeCord.getInstance().config.getCompressionThreshold() );
@@ -540,18 +539,13 @@ public class InitialHandler extends PacketHandler implements PendingConnection
     @Override
     public void disconnect(final BaseComponent... reason)
     {
-        ch.delayedClose( new Runnable()
+        if ( thisState != State.STATUS && thisState != State.PING )
         {
-
-            @Override
-            public void run()
-            {
-                if ( thisState != State.STATUS && thisState != State.PING )
-                {
-                    unsafe().sendPacket( new Kick( ComponentSerializer.toString( reason ) ) );
-                }
-            }
-        } );
+            ch.delayedClose( new Kick( ComponentSerializer.toString( reason ) ) );
+        } else
+        {
+            ch.close();
+        }
     }
 
     @Override
