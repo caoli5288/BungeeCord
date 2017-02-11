@@ -316,7 +316,7 @@ public final class UserConnection implements ProxiedPlayer
                     if ( retry && def != null && ( getServer() == null || def != getServer().getInfo() ) )
                     {
                         sendMessage( bungee.getTranslation( "fallback_lobby" ) );
-                        connect( def, null, false );
+                        connect( def, null, true );
                     } else if ( dimensionChange )
                     {
                         disconnect( bungee.getTranslation( "fallback_kick", future.cause().getClass().getName() ) );
@@ -368,15 +368,7 @@ public final class UserConnection implements ProxiedPlayer
                 getName(), BaseComponent.toLegacyText( reason )
             } );
 
-            ch.delayedClose( new Runnable()
-            {
-
-                @Override
-                public void run()
-                {
-                    unsafe().sendPacket( new Kick( ComponentSerializer.toString( reason ) ) );
-                }
-            } );
+            ch.delayedClose( new Kick( ComponentSerializer.toString( reason ) ) );
 
             if ( server != null )
             {
@@ -431,7 +423,7 @@ public final class UserConnection implements ProxiedPlayer
         // Action bar on 1.8 doesn't display the new JSON formattings, legacy works - send it using this for now
         if ( position == ChatMessageType.ACTION_BAR && getPendingConnection().getVersion() <= ProtocolConstants.MINECRAFT_1_8 )
         {
-            sendMessage( position, ComponentSerializer.toString( new TextComponent( TextComponent.toLegacyText( message ) ) ) );
+            sendMessage( position, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
         } else
         {
             sendMessage( position, ComponentSerializer.toString( message ) );
@@ -444,7 +436,7 @@ public final class UserConnection implements ProxiedPlayer
         // Action bar on 1.8 doesn't display the new JSON formattings, legacy works - send it using this for now
         if ( position == ChatMessageType.ACTION_BAR && getPendingConnection().getVersion() <= ProtocolConstants.MINECRAFT_1_8 )
         {
-            sendMessage( position, ComponentSerializer.toString( new TextComponent( TextComponent.toLegacyText( message ) ) ) );
+            sendMessage( position, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
         } else
         {
             sendMessage( position, ComponentSerializer.toString( message ) );
@@ -614,7 +606,7 @@ public final class UserConnection implements ProxiedPlayer
 
     public void setCompressionThreshold(int compressionThreshold)
     {
-        if ( ch.getHandle().isActive() && this.compressionThreshold == -1 )
+        if ( !ch.isClosing() && this.compressionThreshold == -1 && compressionThreshold >= 0 )
         {
             this.compressionThreshold = compressionThreshold;
             unsafe.sendPacket( new SetCompression( compressionThreshold ) );
