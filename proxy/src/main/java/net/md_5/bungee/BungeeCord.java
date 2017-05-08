@@ -23,6 +23,7 @@ import jline.console.ConsoleReader;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.Synchronized;
+import lombok.val;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.Favicon;
 import net.md_5.bungee.api.ProxyServer;
@@ -122,6 +123,7 @@ public class BungeeCord extends ProxyServer
     private final Map<String, UserConnection> connections = new CaseInsensitiveMap<>();
     // Used to help with packet rewriting
     private final Map<UUID, UserConnection> connectionsByOfflineUUID = new HashMap<>();
+    private final Map<UUID, UserConnection> connectionsByUUID = new HashMap<>();
     private final ReadWriteLock connectionLock = new ReentrantReadWriteLock();
     /**
      * Plugin manager.
@@ -234,8 +236,6 @@ public class BungeeCord extends ProxyServer
             ResourceLeakDetector.setLevel( ResourceLeakDetector.Level.DISABLED ); // Eats performance
         }
 
-        eventLoops = PipelineUtils.newEventLoopGroup( 0, new ThreadFactoryBuilder().setNameFormat( "Netty IO Thread #%1$d" ).build() );
-
         File moduleDirectory = new File( "modules" );
         moduleManager.load( this, moduleDirectory );
         pluginManager.detectPlugins( moduleDirectory );
@@ -245,6 +245,18 @@ public class BungeeCord extends ProxyServer
 
         pluginManager.loadPlugins();
         config.load();
+
+        val factory = config.isNettyThreadAffinity() ? new AffinityTFactory("netty-io", getLogger()) :
+                new ThreadFactoryBuilder().setNameFormat("Netty IO Thread #%1$d").build();
+
+        int l1 = config.getNettyThreadLimit();
+        int l2 = l1 > -1 ? (l1 > 0 ? l1 : Runtime.getRuntime().availableProcessors()) : 0;
+
+        if (l2 > 0) {
+            getLogger().info("Setup netty worker pool size " + l2);
+        }
+
+        eventLoops = PipelineUtils.newEventLoopGroup(l2, factory);
 
         registerChannel( ForgeConstants.FML_TAG );
         registerChannel( ForgeConstants.FML_HANDSHAKE_TAG );
@@ -298,7 +310,7 @@ public class BungeeCord extends ProxyServer
                     .option( ChannelOption.SO_REUSEADDR, true ) // TODO: Move this elsewhere!
                     .childAttr( PipelineUtils.LISTENER, info )
                     .childHandler( PipelineUtils.SERVER_CHILD )
-                    .group( eventLoops )
+                    .group(PipelineUtils.newEventLoopGroup(1, new ThreadFactoryBuilder().setNameFormat("netty-boss-%1$d").build()), eventLoops)
                     .localAddress( info.getHost() )
                     .bind().addListener( listener );
 
@@ -525,15 +537,7 @@ public class BungeeCord extends ProxyServer
         connectionLock.readLock().lock();
         try
         {
-            for ( ProxiedPlayer proxiedPlayer : connections.values() )
-            {
-                if ( proxiedPlayer.getUniqueId().equals( uuid ) )
-                {
-                    return proxiedPlayer;
-                }
-            }
-
-            return null;
+            return connectionsByUUID.get( uuid );
         } finally
         {
             connectionLock.readLock().unlock();
@@ -628,6 +632,7 @@ public class BungeeCord extends ProxyServer
         try
         {
             connections.put( con.getName(), con );
+            connectionsByUUID.put( con.getUniqueId(), con );
             connectionsByOfflineUUID.put( con.getPendingConnection().getOfflineId(), con );
         } finally
         {
@@ -644,6 +649,7 @@ public class BungeeCord extends ProxyServer
             if ( connections.get( con.getName() ) == con )
             {
                 connections.remove( con.getName() );
+                connectionsByUUID.remove( con.getUniqueId() );
                 connectionsByOfflineUUID.remove( con.getPendingConnection().getOfflineId() );
             }
         } finally

@@ -86,6 +86,11 @@
             <version>3.20.0-GA</version>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>net.openhft</groupId>
+            <artifactId>affinity</artifactId>
+            <version>[3.0.6,)</version>
+        </dependency>
     </dependencies>
 
     <build>

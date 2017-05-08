@@ -50,6 +50,11 @@ public class Configuration implements ProxyConfig
      * Should we check minecraft.net auth.
      */
     private boolean onlineMode = true;
+
+    private boolean noNativeCompress;
+    private boolean nettyThreadAffinity;
+    private int nettyThreadLimit;
+
     /**
      * Whether we log proxy commands to the proxy log
      */
@@ -60,7 +65,7 @@ public class Configuration implements ProxyConfig
     private boolean ipForward;
     private Favicon favicon;
     private int compressionThreshold = 256;
-    private boolean noNativeCompress;
+    private boolean preventProxyConnections;
 
     public void load()
     {
@@ -82,6 +87,9 @@ public class Configuration implements ProxyConfig
             BungeeCord.getInstance().getLogger().info("Set not use native compress to " + noNativeCompress + ".");
         }
 
+        nettyThreadAffinity = adapter.getBoolean("i5mc.netty-thread-affinity", false);
+        nettyThreadLimit = adapter.getInt("i5mc.netty-thread-limit", -1);
+
         listeners = adapter.getListeners();
         timeout = adapter.getInt( "timeout", timeout );
         uuid = adapter.getString( "stats", uuid );
@@ -91,6 +99,7 @@ public class Configuration implements ProxyConfig
         throttle = adapter.getInt( "connection_throttle", throttle );
         ipForward = adapter.getBoolean( "ip_forward", ipForward );
         compressionThreshold = adapter.getInt( "network_compression_threshold", compressionThreshold );
+        preventProxyConnections = adapter.getBoolean( "prevent_proxy_connections", preventProxyConnections);
 
         disabledCommands = new CaseInsensitiveSet( (Collection<String>) adapter.getList( "disabled_commands", Arrays.asList( "disabledcommandhere" ) ) );
 
