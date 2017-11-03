@@ -13,13 +13,13 @@ public final class NativeCode<T>
 {
 
     private final String name;
-    private final Class<T> javaImpl;
-    private final Class<T> nativeImpl;
+    private final Class<? extends T> javaImpl;
+    private final Class<? extends T> nativeImpl;
     //
     private boolean loaded;
     private boolean enable;
 
-    public NativeCode(String name, Class<T> javaImpl, Class<T> nativeImpl)
+    public NativeCode(String name, Class<? extends T> javaImpl, Class<? extends T> nativeImpl)
     {
         this.name = name;
         this.javaImpl = javaImpl;
