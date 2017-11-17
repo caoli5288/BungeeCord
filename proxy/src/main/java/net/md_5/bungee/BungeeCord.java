@@ -187,14 +187,7 @@ public class BungeeCord extends ProxyServer
         {
             baseBundle = ResourceBundle.getBundle( "messages", Locale.ENGLISH );
         }
-        File file = new File( "messages.properties" );
-        if ( file.isFile() )
-        {
-            try ( FileReader rd = new FileReader( file ) )
-            {
-                customBundle = new PropertyResourceBundle( rd );
-            }
-        }
+        reloadMessages();
 
         consoleReader = reader;
 
@@ -476,6 +469,21 @@ public class BungeeCord extends ProxyServer
     public String getVersion()
     {
         return ( BungeeCord.class.getPackage().getImplementationVersion() == null ) ? "unknown" : BungeeCord.class.getPackage().getImplementationVersion();
+    }
+
+    public void reloadMessages()
+    {
+        File file = new File( "messages.properties" );
+        if ( file.isFile() )
+        {
+            try ( FileReader rd = new FileReader( file ) )
+            {
+                customBundle = new PropertyResourceBundle( rd );
+            } catch ( IOException ex )
+            {
+                getLogger().log( Level.SEVERE, "Could not load custom messages.properties", ex );
+            }
+        }
     }
 
     @Override
