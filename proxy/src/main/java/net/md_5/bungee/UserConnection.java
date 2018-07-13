@@ -177,6 +177,14 @@ public final class UserConnection implements ProxiedPlayer
         ch.write( packet );
     }
 
+    /*
+     * yzh update
+     */
+    public void sendPacket(Collection<PacketWrapper> packet)
+    {
+        ch.writeAll( packet );
+    }
+
     @Deprecated
     public boolean isActive()
     {
@@ -684,7 +692,10 @@ public final class UserConnection implements ProxiedPlayer
         {
             this.compressionThreshold = compressionThreshold;
             unsafe.sendPacket( new SetCompression( compressionThreshold ) );
-            ch.setCompressionThreshold( compressionThreshold );
+            /*
+             * yzh update
+             */
+            ch.setCompressionThreshold( compressionThreshold, 3 );
         }
     }
 

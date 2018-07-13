@@ -6,6 +6,7 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import java.net.InetSocketAddress;
+import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.Setter;
@@ -59,6 +60,28 @@ public class ChannelWrapper
             {
                 ch.writeAndFlush( packet, ch.voidPromise() );
             }
+        }
+    }
+
+    /*
+     * yzh update
+     */
+    public void writeAll(Collection packets)
+    {
+        if ( !closed && !packets.isEmpty() )
+        {
+            for (Object packet : packets)
+            {
+                if ( packet instanceof PacketWrapper )
+                {
+                    ( (PacketWrapper) packet ).setReleased( true );
+                    ch.write( ( (PacketWrapper) packet ).buf, ch.voidPromise() );
+                } else
+                {
+                    ch.write( packet, ch.voidPromise() );
+                }
+            }
+            ch.flush();
         }
     }
 
@@ -130,11 +153,11 @@ public class ChannelWrapper
         return ch;
     }
 
-    public void setCompressionThreshold(int compressionThreshold)
+    public void setCompressionThreshold(int compressionThreshold, int level)
     {
         if ( ch.pipeline().get( PacketCompressor.class ) == null && compressionThreshold != -1 )
         {
-            addBefore( PipelineUtils.PACKET_ENCODER, "compress", new PacketCompressor() );
+            addBefore( PipelineUtils.PACKET_ENCODER, "compress", new PacketCompressor(level) );
         }
         if ( compressionThreshold != -1 )
         {
@@ -152,5 +175,10 @@ public class ChannelWrapper
         {
             ch.pipeline().remove( "decompress" );
         }
+    }
+
+    public void setCompressionThreshold(int compressionThreshold)
+    {
+        setCompressionThreshold(compressionThreshold, 1);
     }
 }
