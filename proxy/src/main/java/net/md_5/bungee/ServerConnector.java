@@ -1,6 +1,6 @@
 package net.md_5.bungee;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
@@ -9,6 +9,7 @@ import com.google.common.base.Preconditions;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.util.internal.RecyclableArrayList;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
@@ -17,6 +18,7 @@ import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.event.ServerConnectEvent;
 import net.md_5.bungee.api.event.ServerConnectedEvent;
 import net.md_5.bungee.api.event.ServerKickEvent;
+import net.md_5.bungee.api.event.ServerPostConnectedEvent;
 import net.md_5.bungee.api.event.ServerSwitchEvent;
 import net.md_5.bungee.api.score.Objective;
 import net.md_5.bungee.api.score.Score;
@@ -34,6 +36,7 @@ import net.md_5.bungee.netty.HandlerBoss;
 import net.md_5.bungee.netty.PacketHandler;
 import net.md_5.bungee.protocol.DefinedPacket;
 import net.md_5.bungee.protocol.MinecraftOutput;
+import net.md_5.bungee.protocol.PacketWrapper;
 import net.md_5.bungee.protocol.Protocol;
 import net.md_5.bungee.protocol.ProtocolConstants;
 import net.md_5.bungee.protocol.packet.EncryptionRequest;
@@ -151,7 +154,10 @@ public class ServerConnector extends PacketHandler
     @Override
     public void handle(SetCompression setCompression) throws Exception
     {
-        ch.setCompressionThreshold(setCompression.getThreshold());
+        /*
+         * yzh update
+         */
+        ch.setCompressionThreshold(setCompression.getThreshold(), 1);
     }
     
     @Override
@@ -159,7 +165,7 @@ public class ServerConnector extends PacketHandler
     {
         Preconditions.checkState(thisState == State.LOGIN, "Not expecting LOGIN");
         
-        ServerConnection server = new ServerConnection(ch, target);
+        final ServerConnection server = new ServerConnection(ch, target);
         ServerConnectedEvent event = new ServerConnectedEvent(user, server);
         bungee.getPluginManager().callEvent(event);
         
@@ -261,7 +267,53 @@ public class ServerConnector extends PacketHandler
             // Remove from old servers
             user.getServer().disconnect("Quitting");
         }
-        
+
+        /*
+         * yzh update
+         */
+        queue = RecyclableArrayList.newInstance();
+
+        ServerPostConnectedEvent connectedEvent = new ServerPostConnectedEvent(user, server, () -> postLogin(server));
+        bungee.getPluginManager().callEvent(connectedEvent);
+        connectedEvent.post();
+
+        throw CancelSendSignal.INSTANCE;
+    }
+
+    private RecyclableArrayList queue;
+    private static final int QUEUE_LIMIT = 16384;
+
+    @Override
+    public void handle(PacketWrapper packet) throws Exception {
+        if (queue == null || !user.isActive()) {
+            return;
+        }
+
+        /*
+         * low freq queued too many data in our network
+         */
+        if (queue.size() > QUEUE_LIMIT) {
+            queue.recycle();
+            queue = null;
+            user.disconnect("");
+            return;
+        }
+
+        /*
+         * avoid release in boss handler
+         */
+        packet.buf.retain();
+
+        /*
+         * queue upstream server data packet(s) to handle delayed server switch
+         */
+        queue.add(packet);
+    }
+
+    protected void postLogin(ServerConnection server) {
+        /*
+         * yzh update
+         */
         // TODO: Fix this?
         if (!user.isActive())
         {
@@ -270,24 +322,26 @@ public class ServerConnector extends PacketHandler
             bungee.getLogger().warning("No client connected for pending server!");
             return;
         }
-        
+
         // Add to new server
         // TODO: Move this to the connected() method of DownstreamBridge
         target.addPlayer(user);
         user.getPendingConnects().remove(target);
         user.setServerJoinQueue(null);
         user.setDimensionChange(false);
-        
+
         user.setServer(server);
+
+        user.sendPacket((List) queue);
+        queue.recycle();
+        queue = null;
+
         ch.getHandle().pipeline().get(HandlerBoss.class).setHandler(new DownstreamBridge(bungee, user, server));
-        
         bungee.getPluginManager().callEvent(new ServerSwitchEvent(user));
-        
+
         thisState = State.FINISHED;
-        
-        throw CancelSendSignal.INSTANCE;
     }
-    
+
     @Override
     public void handle(EncryptionRequest encryptionRequest) throws Exception
     {
