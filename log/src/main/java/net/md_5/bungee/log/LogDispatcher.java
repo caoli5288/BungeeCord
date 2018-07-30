@@ -40,7 +40,7 @@ public class LogDispatcher extends Thread
 
     public void queue(LogRecord record)
     {
-        if ( !isInterrupted() )
+        if ( !isInterrupted() && queue.size() < 512 )
         {
             queue.add( record );
         }
