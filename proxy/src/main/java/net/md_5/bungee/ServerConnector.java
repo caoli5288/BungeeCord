@@ -1,5 +1,6 @@
 package net.md_5.bungee;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
@@ -9,6 +10,7 @@ import com.google.common.base.Preconditions;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import io.netty.util.internal.RecyclableArrayList;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -86,7 +88,15 @@ public class ServerConnector extends PacketHandler
         else
             user.sendMessage(ChatColor.RED + message);
     }
-    
+
+    @Override
+    public boolean shouldHandle(PacketWrapper packet) throws Exception {
+        if (!user.isActive()) {
+            throw new IOException("#debug closed user channel in server connector");
+        }
+        return super.shouldHandle(packet);
+    }
+
     @Override
     public void connected(ChannelWrapper channel) throws Exception
     {
@@ -285,7 +295,7 @@ public class ServerConnector extends PacketHandler
 
     @Override
     public void handle(PacketWrapper packet) throws Exception {
-        if (queue == null || !user.isActive()) {
+        if (queue == null) {
             return;
         }
 
@@ -295,19 +305,14 @@ public class ServerConnector extends PacketHandler
         if (queue.size() > QUEUE_LIMIT) {
             queue.recycle();
             queue = null;
-            user.disconnect("");
+            user.disconnect("#debug server connector handle packet wrapper overflow");
             return;
         }
 
         /*
-         * avoid release in boss handler
-         */
-        packet.buf.retain();
-
-        /*
          * queue upstream server data packet(s) to handle delayed server switch
          */
-        queue.add(packet);
+        queue.add(new PacketWrapper(null, Unpooled.copiedBuffer(packet.buf)));
     }
 
     protected void postLogin(ServerConnection server) {
