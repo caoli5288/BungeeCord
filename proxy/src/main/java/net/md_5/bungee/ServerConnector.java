@@ -283,9 +283,8 @@ public class ServerConnector extends PacketHandler
          */
         queue = RecyclableArrayList.newInstance();
 
-        ServerPostConnectedEvent connectedEvent = new ServerPostConnectedEvent(user, server, () -> postLogin(server));
+        ServerPostConnectedEvent connectedEvent = new ServerPostConnectedEvent(ch.getHandle(), user, server, (ret, err) -> postLogin(server));
         bungee.getPluginManager().callEvent(connectedEvent);
-        connectedEvent.post();
 
         throw CancelSendSignal.INSTANCE;
     }

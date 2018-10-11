@@ -1,24 +1,25 @@
 package net.md_5.bungee.api.event;
 
-import lombok.AllArgsConstructor;
+import io.netty.channel.Channel;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import net.md_5.bungee.api.Callback;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.connection.Server;
-import net.md_5.bungee.api.plugin.Event;
 
-@AllArgsConstructor
 @Data
-@ToString
 @EqualsAndHashCode(callSuper = false)
-public class ServerPostConnectedEvent extends Event {
+public class ServerPostConnectedEvent extends AsyncEvent<ServerPostConnectedEvent> {
 
+    private final Channel connector;
     private final ProxiedPlayer player;
     private final Server server;
-    private Runnable runnable;
 
-    public void post() {
-        runnable.run();
+    public ServerPostConnectedEvent(Channel connector, ProxiedPlayer player, Server server, Callback<ServerPostConnectedEvent> done) {
+        super(done);
+        this.connector = connector;
+        this.player = player;
+        this.server = server;
     }
+
 }
